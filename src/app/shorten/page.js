@@ -4,23 +4,20 @@ import { useState, useEffect } from "react";
 import { useRouter } from 'next/navigation';
 import ParticleAnimation from "@/components/ParticleCanvas";
 import toast from 'react-hot-toast';
-import { Copy, Info } from 'lucide-react';
+import { Copy, Info, History } from 'lucide-react';
 import Link from 'next/link';
+import { useAuth } from '@/context/AuthContext';
 
 export default function ShortenPage() {
     const [longUrl, setLongUrl] = useState("");
     const [alias, setAlias] = useState("");
     const [shortenedUrl, setShortenedUrl] = useState("");
-    const [isGuest, setIsGuest] = useState(true);
     const [expiresAt, setExpiresAt] = useState(null);
     const [origin, setOrigin] = useState("");
     const router = useRouter();
+    const { isLoggedIn } = useAuth();
 
     useEffect(() => {
-        const token = localStorage.getItem('token');
-        if (token) {
-            setIsGuest(false);
-        }
         setOrigin(window.location.origin);
     }, []);
 
@@ -47,7 +44,6 @@ export default function ShortenPage() {
             const shortUrl = `${origin}/${data.url.alias}`;
             setShortenedUrl(shortUrl);
             setExpiresAt(data.url.expiresAt);
-            setIsGuest(data.isGuest);
             toast.success('URL shortened successfully!');
         } catch (error) {
             toast.error(error.message);
@@ -63,6 +59,14 @@ export default function ShortenPage() {
         }
     };
 
+    const handleViewLinks = () => {
+        if (!isLoggedIn) {
+            toast.error('Please login to view your links');
+            return;
+        }
+        router.push('/links');
+    };
+
     return (
         <main className="min-h-screen flex items-center justify-center relative overflow-hidden">
             <ParticleAnimation />
@@ -75,27 +79,22 @@ export default function ShortenPage() {
                     </h1>
 
                     {/* Guest User Notice */}
-                    <div className="mb-6 p-4 bg-cyan-500/10 rounded-lg border border-cyan-500/20">
-                        <div className="flex items-start space-x-2">
-                            <Info className="w-5 h-5 text-cyan-400 mt-0.5 flex-shrink-0" />
-                            <p className="text-sm text-white/80">
-                                {isGuest ? (
-                                    <>
-                                        Guest links expire in 15 days.{' '}
-                                        <Link href="/login" className="text-cyan-400 hover:text-cyan-300 underline">
-                                            Login
-                                        </Link>{' '}
-                                        for permanent links!
-                                    </>
-                                ) : (
-                                    'Your links will never expire!'
-                                )}
-                            </p>
+                    {!isLoggedIn && (
+                        <div className="mb-6 p-4 bg-cyan-500/10 rounded-lg border border-cyan-500/20">
+                            <div className="flex items-start space-x-2">
+                                <Info className="w-5 h-5 text-cyan-400 mt-0.5 flex-shrink-0" />
+                                <p className="text-sm text-white/80">
+                                    Guest links expire in 15 days.{' '}
+                                    <Link href="/login" className="text-cyan-400 hover:text-cyan-300 underline">
+                                        Login
+                                    </Link>{' '}
+                                    for permanent links!
+                                </p>
+                            </div>
                         </div>
-                    </div>
+                    )}
 
                     <form onSubmit={handleSubmit} className="space-y-6">
-                        {/* Long URL Input */}
                         <div className="space-y-2">
                             <label className="block text-[#00ffee] text-sm font-medium">
                                 Enter Long URL
@@ -110,7 +109,6 @@ export default function ShortenPage() {
                             />
                         </div>
 
-                        {/* Custom Alias Input */}
                         <div className="space-y-2">
                             <label className="block text-[#00ffee] text-sm font-medium">
                                 Enter Custom Alias
@@ -129,7 +127,6 @@ export default function ShortenPage() {
                             </div>
                         </div>
 
-                        {/* Shorten Button */}
                         <button
                             type="submit"
                             className="w-full inline-flex text-center justify-center px-6 py-3 rounded-full bg-[#00ffee] text-black font-medium hover:bg-opacity-90 transition-all hover:scale-105 transform hover:bg-[#00ffee]"
@@ -149,16 +146,23 @@ export default function ShortenPage() {
                                     <Copy size={20} />
                                 </button>
                             </div>
-                            {isGuest && expiresAt && (
+                            {!isLoggedIn && expiresAt && (
                                 <p className="mt-2 text-sm text-white/60">
                                     Expires: {new Date(expiresAt).toLocaleDateString()}
                                 </p>
                             )}
                         </div>
                     )}
+
+                    <button
+                        onClick={handleViewLinks}
+                        className="mt-6 w-full flex items-center justify-center space-x-2 px-6 py-3 rounded-full bg-white/10 text-white font-medium hover:bg-white/20 transition-all"
+                    >
+                        <History size={20} />
+                        <span>View My Links</span>
+                    </button>
                 </div>
             </div>
         </main>
     );
-
 }

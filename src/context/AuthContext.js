@@ -1,40 +1,56 @@
-// src/context/AuthContext.js
 "use client";
 
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
 
 const AuthContext = createContext();
 
-export const AuthProvider = ({ children }) => {
+export function AuthProvider({ children }) {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
-    const [userEmail, setUserEmail] = useState("");
+    const [userEmail, setUserEmail] = useState('');
+    const router = useRouter();
 
     useEffect(() => {
-        const token = localStorage.getItem("token");
-        if (token) {
+        const token = localStorage.getItem('token');
+        const email = localStorage.getItem('userEmail');
+        if (token && email) {
             setIsLoggedIn(true);
-            const decoded = JSON.parse(atob(token.split(".")[1]));
-            setUserEmail(decoded.email);
+            setUserEmail(email);
         }
     }, []);
 
     const login = (token, email) => {
-        localStorage.setItem("token", token);
+        localStorage.setItem('token', token);
+        localStorage.setItem('userEmail', email);
         setIsLoggedIn(true);
         setUserEmail(email);
     };
 
     const logout = () => {
-        localStorage.removeItem("token");
+        localStorage.removeItem('token');
+        localStorage.removeItem('userEmail');
         setIsLoggedIn(false);
-        setUserEmail("");
+        setUserEmail('');
+        router.push('/');
+    };
+
+    const checkAuth = () => {
+        if (isLoggedIn) {
+            toast.error('You are already logged in!');
+            router.push('/shorten');
+            return true;
+        }
+        return false;
     };
 
     return (
-        <AuthContext.Provider value={{ isLoggedIn, userEmail, login, logout }}>
+        <AuthContext.Provider value={{ isLoggedIn, userEmail, login, logout, checkAuth }}>
             {children}
         </AuthContext.Provider>
     );
-};
+}
 
-export const useAuth = () => useContext(AuthContext);
+export function useAuth() {
+    return useContext(AuthContext);
+}
