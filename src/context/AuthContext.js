@@ -35,17 +35,18 @@ export function AuthProvider({ children }) {
         router.push('/');
     };
 
-    const checkAuth = () => {
-        if (isLoggedIn) {
-            toast.error('You are already logged in!');
-            router.push('/shorten');
-            return true;
-        }
-        return false;
-    };
+    // const checkAuth = () => {
+    //     if (isLoggedIn) {
+    //         toast.error('You are already logged in!');
+    //         router.push('/shorten');
+    //         return true;
+    //     }
+    //     return false;
+    // };
 
     return (
-        <AuthContext.Provider value={{ isLoggedIn, userEmail, login, logout, checkAuth }}>
+        // <AuthContext.Provider value={{ isLoggedIn, userEmail, login, logout, checkAuth }}>
+        <AuthContext.Provider value={{ isLoggedIn, userEmail, login, logout }}>
             {children}
         </AuthContext.Provider>
     );

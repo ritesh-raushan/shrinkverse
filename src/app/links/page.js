@@ -13,17 +13,21 @@ export default function LinksPage() {
     const router = useRouter();
     const { isLoggedIn } = useAuth();
     const [origin, setOrigin] = useState("");
+    const [isInitialAuthCheck, setIsInitialAuthCheck] = useState(true);
 
     useEffect(() => {
-        if (!isLoggedIn) {
-            toast.error('Please login to view your links');
+        if (!isLoggedIn && !isInitialAuthCheck) {
             router.push('/login');
             return;
         }
 
-        setOrigin(window.location.origin);
-        fetchLinks();
-    }, [isLoggedIn]);
+        if (isLoggedIn) {
+            setOrigin(window.location.origin);
+            fetchLinks();
+        }
+
+        setIsInitialAuthCheck(false);
+    }, [isLoggedIn, isInitialAuthCheck]);
 
     const fetchLinks = async () => {
         try {
@@ -65,17 +69,17 @@ export default function LinksPage() {
                     'Authorization': `Bearer ${token}`,
                 },
             });
-    
+
             if (!res.ok) {
                 throw new Error('Failed to delete link');
             }
-    
+
             toast.success('Link deleted successfully');
             fetchLinks(); // Refresh the list
         } catch (error) {
             toast.error(error.message);
         }
-    };    
+    };
 
     const visitLink = (longUrl) => {
         window.open(longUrl, '_blank');

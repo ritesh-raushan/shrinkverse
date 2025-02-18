@@ -17,13 +17,13 @@ export default function LoginPage() {
     const [emailError, setEmailError] = useState('');
     const [passwordError, setPasswordError] = useState('');
     const router = useRouter();
-    const { login, checkAuth } = useAuth();
+    const { login, isLoggedIn } = useAuth();
 
     useEffect(() => {
-        if (checkAuth()) {
+        if (isLoggedIn) {
             router.push('/shorten');
         }
-    }, [checkAuth, router]);
+    }, [isLoggedIn, router]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();

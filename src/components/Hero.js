@@ -1,8 +1,24 @@
+"use client";
+
 import ParticleCanvas from "../components/ParticleCanvas";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, History } from "lucide-react";
 import Link from "next/link";
+import { useAuth } from "@/context/AuthContext";
+import toast from "react-hot-toast";
+import { useRouter } from "next/navigation";
 
 export default function Home() {
+    const { isLoggedIn } = useAuth();
+    const router = useRouter();
+
+    const handleViewLinks = () => {
+        if (!isLoggedIn) {
+            toast.error('Please login to view your links');
+            return;
+        }
+        router.push('/links');
+    };
+
     return (
         <main className="min-h-screen relative">
             {/* Canvas Layer as Background */}
@@ -25,13 +41,25 @@ export default function Home() {
                         ShrinkVerse turns long URLs into short, customizable links that are easy to share and track. Simplify your sharing experience today! Make every link memorable and efficient. Create, share, and track with ease.
                     </p>
 
-                    <Link
-                        href="/shorten"
-                        className="inline-flex items-center px-6 py-3 rounded-full bg-white text-black font-semibold hover:bg-opacity-90 transition-all hover:scale-105 transform hover:bg-[#00ffee]"
-                    >
-                        Shorten Now
-                        <ArrowRight className="ml-2 h-5 w-5" />
-                    </Link>
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                        <Link
+                            href="/shorten"
+                            className="inline-flex items-center px-6 py-3 rounded-full bg-white text-black font-semibold hover:bg-opacity-90 transition-all hover:scale-105 transform hover:bg-[#00ffee]"
+                        >
+                            Shorten Now
+                            <ArrowRight className="ml-2 h-5 w-5" />
+                        </Link>
+
+                        {isLoggedIn && (
+                            <button
+                                onClick={handleViewLinks}
+                                className="inline-flex items-center px-6 py-3 rounded-full bg-white/10 text-white font-semibold hover:bg-white/20 transition-all hover:scale-105 transform"
+                            >
+                                <History className="mr-2 h-5 w-5" />
+                                View My Links
+                            </button>
+                        )}
+                    </div>
                 </div>
             </section>
         </main>
