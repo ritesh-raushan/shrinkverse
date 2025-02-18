@@ -16,13 +16,13 @@ export default function SignupPage() {
     const [emailError, setEmailError] = useState('');
     const [passwordError, setPasswordError] = useState('');
     const router = useRouter();
-    const { checkAuth } = useAuth();
+    const { isLoggedIn } = useAuth();
 
     useEffect(() => {
-        if (checkAuth()) {
+        if (isLoggedIn) {
             router.push('/shorten');
         }
-    }, [checkAuth, router]);
+    }, [isLoggedIn, router]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
