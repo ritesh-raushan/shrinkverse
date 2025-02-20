@@ -49,9 +49,8 @@ export default function Navbar() {
                                 <Link
                                     key={item.name}
                                     href={item.href}
-                                    className={`px-4 py-2 text-base text-white hover:bg-white/20 hover:text-[#00ffee] rounded-full transition-all ${
-                                        pathname === item.href ? "bg-white/20 text-[#00ffee]" : ""
-                                    }`}
+                                    className={`px-4 py-2 text-base text-white hover:bg-white/20 hover:text-[#00ffee] rounded-full transition-all ${pathname === item.href ? "bg-white/20 text-[#00ffee]" : ""
+                                        }`}
                                 >
                                     {item.name}
                                 </Link>
@@ -108,7 +107,10 @@ export default function Navbar() {
                     <div className="md:hidden flex items-center justify-between w-full">
                         {/* Logo for Mobile */}
                         <Link href="/" className="flex items-center">
-                            <span className="text-xl font-bold text-white">ShrinkVerse</span>
+                            <span className="text-2xl font-bold hover:scale-105 transform">
+                                <span className="text-[#00ffee]">Shrink</span>
+                                <span className="text-white">Verse</span>
+                            </span>
                         </Link>
 
                         {/* Mobile Menu Button */}
@@ -116,20 +118,21 @@ export default function Navbar() {
                             onClick={() => setIsOpen(!isOpen)}
                             className="p-2 rounded-full bg-white/10 backdrop-blur-[12px] border border-white/20 text-white hover:bg-white/20 transition-all"
                         >
-                            <Menu className="h-6 w-6" />
+                            <Menu className="h-5 w-5" />
                         </button>
                     </div>
                 </div>
 
                 {/* Mobile Navigation Menu */}
                 {isOpen && (
-                    <div className="md:hidden absolute left-4 right-4 mt-2 rounded-2xl bg-white/10 backdrop-blur-[12px] border border-white/20 shadow-lg">
-                        <div className="py-2">
+                    <div className="md:hidden absolute right-4 top-full rounded-2xl bg-white/10 backdrop-blur-[12px] border border-white/20 shadow-lg 
+        w-max max-w-xs">
+                        <div className="py-2 px-4">
                             {navItems.map((item) => (
                                 <Link
                                     key={item.name}
                                     href={item.href}
-                                    className="block px-4 py-2 text-sm text-white hover:bg-white/20"
+                                    className="block px-4 py-2 text-sm text-white hover:bg-white/20 text-center"
                                     onClick={() => setIsOpen(false)}
                                 >
                                     {item.name}
@@ -141,7 +144,7 @@ export default function Navbar() {
                                         <p className="px-4 py-2 text-sm text-white/80 truncate">{userEmail}</p>
                                         <button
                                             onClick={handleLogout}
-                                            className="w-full px-4 py-2 text-sm bg-white text-black rounded-full hover:bg-white/90 transition-all font-medium"
+                                            className="py-2 text-sm bg-white text-black rounded-full hover:bg-white/90 transition-all font-medium"
                                         >
                                             Logout
                                         </button>
@@ -150,13 +153,15 @@ export default function Navbar() {
                                     <>
                                         <Link
                                             href="/login"
-                                            className="w-full px-4 py-2 text-sm text-white hover:bg-white/20 rounded-full transition-all"
+                                            className="py-2 text-sm text-white hover:bg-white/20 rounded-full transition-all text-center"
+                                            onClick={() => setIsOpen(false)}
                                         >
                                             Sign In
                                         </Link>
                                         <Link
                                             href="/signup"
-                                            className="w-full px-4 py-2 text-sm bg-white text-black rounded-full hover:bg-white/90 transition-all font-medium"
+                                            className="py-2 text-sm text-white rounded-full hover:bg-white/90 transition-all font-medium text-center"
+                                            onClick={() => setIsOpen(false)}
                                         >
                                             Get Started
                                         </Link>

@@ -68,11 +68,11 @@ export default function ShortenPage() {
     };
 
     return (
-        <main className="min-h-screen flex items-center justify-center relative overflow-hidden">
+        <main className="min-h-screen flex items-center justify-center relative overflow-hidden px-4">
             <ParticleAnimation />
 
-            <div className="relative z-10 w-full max-w-md mx-auto p-8">
-                <div className="bg-black/40 backdrop-blur-lg rounded-2xl p-8 shadow-[0_0_50px_-12px_rgba(0,255,255,0.25)] border border-cyan-500/30 animate-pulse-slow">
+            <div className="relative z-10 w-full max-w-md mx-auto">
+                <div className="bg-black/40 backdrop-blur-lg rounded-2xl p-6 sm:p-8 shadow-[0_0_50px_-12px_rgba(0,255,255,0.25)] border border-cyan-500/30 animate-pulse-slow">
                     <h1 className="text-2xl font-bold text-white mb-8 text-center">
                         <span className="text-[#00ffee]">Shrink</span>
                         <span className="text-white">Verse</span>
@@ -111,18 +111,18 @@ export default function ShortenPage() {
 
                         <div className="space-y-2">
                             <label className="block text-[#00ffee] text-sm font-medium">
-                                Enter Custom Alias
+                                Custom Alias (Optional)
                             </label>
-                            <div className="flex items-stretch space-x-2">
-                                <div className="bg-white/5 border border-cyan-500/20 rounded-l-lg px-4 py-3 text-white/80 flex items-center">
-                                    {origin ? `${new URL(origin).host}/` : 'loading...'}
+                            <div className="flex flex-col sm:flex-row items-stretch gap-2">
+                                <div className="bg-white/5 border border-cyan-500/20 rounded-lg px-4 py-3 text-white/80 text-sm truncate">
+                                    {origin ? `${origin}/` : 'loading...'}
                                 </div>
                                 <input
                                     type="text"
                                     value={alias}
                                     onChange={(e) => setAlias(e.target.value)}
                                     placeholder="custom-alias"
-                                    className="w-full flex-1 px-4 py-3 rounded-r-lg bg-white/5 border border-cyan-500/20 text-white placeholder-white/50 focus:outline-none focus:border-[#00ffee] focus:ring-1 focus:ring-[#00ffee] transition-all"
+                                    className="flex-1 min-w-0 px-4 py-3 rounded-lg bg-white/5 border border-cyan-500/20 text-white placeholder-white/50 focus:outline-none focus:border-[#00ffee] focus:ring-1 focus:ring-[#00ffee] transition-all"
                                 />
                             </div>
                         </div>
@@ -137,11 +137,11 @@ export default function ShortenPage() {
 
                     {shortenedUrl && (
                         <div className="mt-6 p-4 bg-white/5 rounded-lg border border-cyan-500/20">
-                            <div className="flex items-center justify-between">
-                                <p className="text-white/90 truncate">{shortenedUrl}</p>
+                            <div className="flex items-center justify-between gap-2">
+                                <p className="text-white/90 truncate text-sm sm:text-base">{shortenedUrl}</p>
                                 <button
                                     onClick={copyToClipboard}
-                                    className="ml-2 p-2 text-cyan-400 hover:text-cyan-300 transition-colors"
+                                    className="ml-2 p-2 text-cyan-400 hover:text-cyan-300 transition-colors flex-shrink-0"
                                 >
                                     <Copy size={20} />
                                 </button>
