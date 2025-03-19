@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '@/context/AuthContext';
 import { signIn } from 'next-auth/react';
 import { FcGoogle } from 'react-icons/fc';
+import { useSession } from 'next-auth/react';
 
 export default function SignupPage() {
     const [email, setEmail] = useState('');
@@ -16,13 +17,17 @@ export default function SignupPage() {
     const [emailError, setEmailError] = useState('');
     const [passwordError, setPasswordError] = useState('');
     const router = useRouter();
-    const { isLoggedIn } = useAuth();
+    const { isLoggedIn, login } = useAuth();
+    const { data: session } = useSession();
 
     useEffect(() => {
-        if (isLoggedIn) {
+        if (isLoggedIn || session?.user) {
+            if (session?.user) {
+                login(null, session.user.email);
+            }
             router.push('/shorten');
         }
-    }, [isLoggedIn, router]);
+    }, [isLoggedIn, session, router, login]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();

@@ -6,18 +6,17 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import toast from "react-hot-toast";
+import { useSession } from "next-auth/react";
+import { handleAuthLogout, getAuthUser } from "@/utils/auth";
 
 export default function Navbar() {
     const [isOpen, setIsOpen] = useState(false);
     const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
-    const { isLoggedIn, userEmail, logout } = useAuth();
+    const { data: session } = useSession();
+    const { userEmail, logout } = useAuth();
     const pathname = usePathname();
 
-    const handleLogout = () => {
-        logout();
-        toast.success("Logged out successfully!");
-        window.location.href = "/";
-    };
+    const { isLoggedIn, email } = getAuthUser(session, userEmail);
 
     const navItems = [
         { name: "Home", href: "/" },
@@ -25,6 +24,8 @@ export default function Navbar() {
         { name: "About", href: "/about" },
         { name: "Contact", href: "/contact" },
     ];
+
+    const handleLogout = () => handleAuthLogout(logout);
 
     return (
         <nav className="fixed top-0 left-0 right-0 z-50 px-4 py-4">
@@ -74,7 +75,7 @@ export default function Navbar() {
                                 {isProfileDropdownOpen && (
                                     <div className="absolute right-0 mt-2 w-48 rounded-lg bg-white/10 backdrop-blur-[12px] border border-white/20 shadow-lg">
                                         <div className="p-4">
-                                            <p className="text-sm text-white/80 truncate">{userEmail}</p>
+                                            <p className="text-sm text-white/80 truncate">{email}</p>
                                             <button
                                                 onClick={handleLogout}
                                                 className="w-full mt-2 px-4 py-2 text-sm bg-white text-black rounded-full hover:bg-white/90 transition-all font-medium"

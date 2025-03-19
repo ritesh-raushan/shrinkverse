@@ -57,14 +57,14 @@ export const authOptions = {
                     let dbUser = await User.findOne({ email: user.email });
 
                     if (!dbUser) {
-                        dbUser = new User({
+                        dbUser = await User.create({
                             email: user.email,
                             name: user.name,
                             password: await bcrypt.hash(Math.random().toString(36), 10),
                             provider: 'google'
                         });
 
-                        await dbUser.save();
+                        // await dbUser.save();
                     }
 
                     return true;

@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '@/context/AuthContext';
 import { signIn } from 'next-auth/react';
 import { FcGoogle } from 'react-icons/fc';
+import { useSession } from 'next-auth/react';
 
 export default function LoginPage() {
     const [email, setEmail] = useState('');
@@ -18,12 +19,14 @@ export default function LoginPage() {
     const [passwordError, setPasswordError] = useState('');
     const router = useRouter();
     const { login, isLoggedIn } = useAuth();
+    const { data: session } = useSession();
 
     useEffect(() => {
-        if (isLoggedIn) {
+        if (session?.user) {
+            login(null, session.user.email);
             router.push('/shorten');
         }
-    }, [isLoggedIn, router]);
+    }, [session, router, login]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -61,13 +64,25 @@ export default function LoginPage() {
     const handleGoogleSignIn = async () => {
         setIsGoogleLoading(true);
         try {
-            await signIn('google', { callbackUrl: '/shorten' });
+            const result = await signIn('google', {
+                callbackUrl: '/shorten',
+                redirect: true
+            });
+
+            if (result?.error) {
+                throw new Error(result.error);
+            }
         } catch (error) {
-            toast.error(error.message || 'Failed to sign in with Google');
+            toast.error('Failed to sign in with Google');
+            console.error('Google sign-in error:', error);
         } finally {
             setIsGoogleLoading(false);
         }
     };
+
+    if (isLoggedIn) {
+        return null;
+    }
 
     const validateForm = () => {
         let valid = true;
