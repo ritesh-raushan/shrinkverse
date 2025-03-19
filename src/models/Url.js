@@ -17,7 +17,11 @@ const UrlSchema = new mongoose.Schema({
     },
     expiresAt: {
         type: Date,
-        required: false, // Only set for guest users
+        required: false,
+        default: function() {
+            // Set expiration to 15 days from creation for guest users
+            return this.userId ? null : new Date(Date.now() + 15 * 24 * 60 * 60 * 1000);
+        }
     },
     createdAt: {
         type: Date,

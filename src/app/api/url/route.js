@@ -2,6 +2,13 @@ import dbConnect from '@/lib/dbConnect';
 import Url from '@/models/Url';
 import { verifyAuth } from '@/lib/auth';
 import { NextResponse } from 'next/server';
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "../auth/[...nextauth]/route";
+
+async function removeExpiredUrls() {
+    const now = new Date();
+    await Url.deleteMany({ expiresAt: { $lt: now } });
+}
 
 export async function POST(req) {
     try {
@@ -9,6 +16,7 @@ export async function POST(req) {
         const token = req.headers.get('authorization')?.split(' ')[1];
 
         await dbConnect();
+        await removeExpiredUrls();
 
         if (alias) {
             const existingUrl = await Url.findOne({ alias });
@@ -24,7 +32,11 @@ export async function POST(req) {
         let expiresAt = null;
 
         // Check if user is authenticated
-        if (token) {
+        const session = await getServerSession(authOptions);
+        if (session?.user?.id) {
+            userId = session.user.id;
+        } else if (token) {
+            // If no NextAuth session, try JWT token
             try {
                 userId = await verifyAuth(token);
             } catch (error) {
@@ -40,7 +52,8 @@ export async function POST(req) {
             longUrl,
             alias: alias || Math.random().toString(36).substring(2, 8),
             userId,
-            expiresAt
+            expiresAt,
+            createdAt: new Date()
         });
 
         return NextResponse.json({
@@ -56,12 +69,17 @@ export async function POST(req) {
 export async function GET(req) {
     try {
         const token = req.headers.get('authorization')?.split(' ')[1];
+        const session = await getServerSession(authOptions);
 
-        if (!token) {
+        let userId = null;
+        if (session?.user?.id) {
+            userId = session.user.id;
+        } else if (token) {
+            userId = await verifyAuth(token);
+        } else {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const userId = await verifyAuth(token);
         await dbConnect();
 
         const urls = await Url.find({ userId });

@@ -56,18 +56,25 @@ export const authOptions = {
 
                     let dbUser = await User.findOne({ email: user.email });
 
-                    if (!dbUser) {
+                    if (dbUser) {
+                        // If user exists but doesn't have Google as provider, update their record
+                        if (!dbUser.provider) {
+                            dbUser.provider = 'google';
+                            await dbUser.save();
+                        }
+                        user.id = dbUser._id.toString();
+                    } else {
+                        // Create new user if doesn't exist
                         dbUser = await User.create({
                             email: user.email,
                             name: user.name,
-                            password: await bcrypt.hash(Math.random().toString(36), 10),
-                            provider: 'google'
+                            provider: 'google',
+                            password: await bcrypt.hash(Math.random().toString(36), 10)
                         });
-
-                        // await dbUser.save();
+                        user.id = newUser._id.toString();
                     }
-
                     return true;
+                    
                 } catch (error) {
                     console.error('Google sign-in error:', error);
                     return false;
