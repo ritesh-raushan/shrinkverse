@@ -1,5 +1,4 @@
-
-'use client';
+"use client";
 import { useEffect, useRef } from "react";
 
 const ParticleCanvas = () => {
@@ -7,72 +6,98 @@ const ParticleCanvas = () => {
 
     useEffect(() => {
         const canvas = canvasRef.current;
+        if (!canvas) return;
         const ctx = canvas.getContext("2d");
 
+        // Respect prefers-reduced-motion: render once, then bail out.
+        const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+        // Halve the particle count on small screens to save battery / paint cost.
+        const isSmallScreen = window.innerWidth < 640;
+        const particleCount = isSmallScreen ? 30 : 60;
+
         const particles = [];
-        const particleCount = 60;
+        let rafId = null;
+        let isRunning = true;
 
         const resizeCanvas = () => {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
         };
 
-        window.addEventListener("resize", resizeCanvas);
-        resizeCanvas();
-
         const createParticle = () => {
-            const size = Math.random() * 4 + 2; // Particle size between 2px and 6px
-            const xPosition = Math.random() * canvas.width;
-            const yPosition = Math.random() * canvas.height;
-
             particles.push({
-                x: xPosition,
-                y: yPosition,
-                size: size,
-                speedX: Math.random() * 0.5 - 0.25, // Random horizontal speed
-                speedY: Math.random() * 0.5 - 0.25, // Random vertical speed
-                opacity: Math.random() * 0.3 + 0.2, // Lower opacity for subtlety
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                size: Math.random() * 4 + 2,
+                speedX: Math.random() * 0.5 - 0.25,
+                speedY: Math.random() * 0.5 - 0.25,
+                opacity: Math.random() * 0.3 + 0.2,
             });
         };
 
-        const animateParticles = () => {
+        const drawFrame = () => {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            particles.forEach((particle, index) => {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const particle = particles[i];
+
                 ctx.beginPath();
                 ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(0, 255, 255, ${particle.opacity})`; // Neon cyan color
+                ctx.fillStyle = `rgba(0, 255, 255, ${particle.opacity})`;
                 ctx.fill();
                 ctx.closePath();
 
-                // Update particle position
                 particle.x += particle.speedX;
                 particle.y += particle.speedY;
 
-                // Remove particles that go off-screen
                 if (
                     particle.x > canvas.width ||
                     particle.x < 0 ||
                     particle.y > canvas.height ||
                     particle.y < 0
                 ) {
-                    particles.splice(index, 1);
-                    createParticle(); // Create a new particle to replace the one removed
+                    particles.splice(i, 1);
+                    createParticle();
                 }
-            });
-
-            requestAnimationFrame(animateParticles);
+            }
         };
 
-        // Initialize particles
-        for (let i = 0; i < particleCount; i++) {
-            createParticle();
+        const animate = () => {
+            if (!isRunning) return;
+            drawFrame();
+            rafId = requestAnimationFrame(animate);
+        };
+
+        const handleVisibilityChange = () => {
+            if (document.hidden) {
+                isRunning = false;
+                if (rafId) cancelAnimationFrame(rafId);
+                rafId = null;
+            } else if (!reducedMotion) {
+                isRunning = true;
+                animate();
+            }
+        };
+
+        window.addEventListener("resize", resizeCanvas);
+        document.addEventListener("visibilitychange", handleVisibilityChange);
+
+        resizeCanvas();
+        for (let i = 0; i < particleCount; i++) createParticle();
+
+        if (reducedMotion) {
+            // Static frame only.
+            drawFrame();
+        } else {
+            animate();
         }
 
-        animateParticles();
-
         return () => {
+            isRunning = false;
+            if (rafId) cancelAnimationFrame(rafId);
             window.removeEventListener("resize", resizeCanvas);
+            document.removeEventListener("visibilitychange", handleVisibilityChange);
         };
     }, []);
 
