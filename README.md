@@ -1,36 +1,103 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# ShrinkVerse
 
-## Getting Started
+Fast, friendly URL shortener built on Next.js 15 (App Router), MongoDB, and NextAuth.
 
-First, run the development server:
+- Shorten links instantly as a guest (links live for 15 days) or as a registered user (permanent).
+- Custom aliases, link history, copy/visit/delete actions.
+- Email/password auth and Google sign-in.
+- Server-rendered redirects, abuse protection, SEO-friendly.
+
+## Tech stack
+
+- [Next.js 15](https://nextjs.org/) (App Router, Server Components)
+- [React 19](https://react.dev/)
+- [Tailwind CSS 3](https://tailwindcss.com/)
+- [MongoDB](https://www.mongodb.com/) via [Mongoose](https://mongoosejs.com/)
+- [NextAuth v4](https://next-auth.js.org/) (Credentials + Google)
+- [Upstash Ratelimit](https://github.com/upstash/ratelimit) for abuse protection
+- [Cloudflare Turnstile](https://www.cloudflare.com/products/turnstile/) for CAPTCHA
+- [Sentry](https://sentry.io/) for error tracking
+
+## Getting started
+
+### Prerequisites
+
+- Node.js >= 20
+- MongoDB connection string (Atlas free tier works fine)
+- Google OAuth credentials (optional, for Google sign-in)
+
+### Setup
+
+1. Clone the repo and install dependencies:
+
+   ```bash
+   git clone https://github.com/<you>/shrinkverse.git
+   cd shrinkverse
+   npm install
+   ```
+
+2. Copy `.env.example` to `.env.local` and fill in values:
+
+   ```bash
+   cp .env.example .env.local
+   ```
+
+   At minimum you need `MONGODB_URI`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, and `NEXT_PUBLIC_BASE_URL`. The rest enable optional features (Google sign-in, rate limiting, CAPTCHA, error tracking, URL safety scanning).
+
+3. Run the dev server:
+
+   ```bash
+   npm run dev
+   ```
+
+   Open [http://localhost:3000](http://localhost:3000).
+
+### Generating secrets
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# NEXTAUTH_SECRET / IP_HASH_SALT
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Scripts
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+| Script           | Purpose                         |
+| ---------------- | ------------------------------- |
+| `npm run dev`    | Start dev server with Turbopack |
+| `npm run build`  | Production build                |
+| `npm start`      | Start production server         |
+| `npm run lint`   | Run ESLint                      |
+| `npm run format` | Run Prettier on the repo        |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Project structure
 
-## Learn More
+```
+src/
+  app/                     # Next.js App Router pages and API routes
+    api/
+      auth/                # NextAuth + register endpoints
+      url/                 # Shorten / list / get / delete
+    [alias]/               # Server-side redirect handler
+    about/ contact/ ...    # Static pages
+    privacy/ terms/ abuse/ # Legal pages
+  components/              # Reusable UI components
+  context/                 # React context providers
+  lib/                     # Server utilities (db, auth, rate limit, ...)
+  models/                  # Mongoose models
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Deploying to Vercel
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. Push the repo to GitHub.
+2. Import the project in [Vercel](https://vercel.com/new).
+3. Add every variable from `.env.example` in the Vercel project settings.
+4. Set `NEXTAUTH_URL` and `NEXT_PUBLIC_BASE_URL` to your production URL.
+5. Deploy.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Contributing
 
-## Deploy on Vercel
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the commit-message convention and dev workflow.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## License
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+MIT — see [LICENSE](LICENSE).
