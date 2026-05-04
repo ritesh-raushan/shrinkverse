@@ -1,13 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { signIn, useSession } from "next-auth/react";
 import toast from "react-hot-toast";
 import ParticleAnimation from "@/components/ParticleCanvas";
 import GoogleLogo from "@/components/GoogleLogo";
+import TurnstileWidget from "@/components/TurnstileWidget";
 import { isPasswordStrong, PASSWORD_RULE_MESSAGE } from "@/lib/password";
+
+const TURNSTILE_ENABLED = Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY);
 
 export default function SignupPage() {
     const [email, setEmail] = useState("");
@@ -15,8 +18,10 @@ export default function SignupPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [emailError, setEmailError] = useState("");
     const [passwordError, setPasswordError] = useState("");
+    const [turnstileToken, setTurnstileToken] = useState("");
     const router = useRouter();
     const { status } = useSession();
+    const handleToken = useCallback((token) => setTurnstileToken(token), []);
 
     useEffect(() => {
         if (status === "authenticated") {
@@ -48,6 +53,11 @@ export default function SignupPage() {
         e.preventDefault();
         if (!validateForm()) return;
 
+        if (TURNSTILE_ENABLED && !turnstileToken) {
+            toast.error("Please complete the CAPTCHA to continue");
+            return;
+        }
+
         setIsLoading(true);
         try {
             const res = await fetch("/api/auth/register", {
@@ -56,6 +66,7 @@ export default function SignupPage() {
                 body: JSON.stringify({
                     email: email.trim().toLowerCase(),
                     password,
+                    turnstileToken,
                 }),
             });
 
@@ -137,6 +148,8 @@ export default function SignupPage() {
                                 <p className="text-red-500 text-sm">{passwordError}</p>
                             )}
                         </div>
+
+                        {TURNSTILE_ENABLED && <TurnstileWidget onToken={handleToken} />}
 
                         <button
                             type="submit"

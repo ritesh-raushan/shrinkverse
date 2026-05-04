@@ -6,6 +6,7 @@ import dbConnect from "@/lib/dbConnect";
 import User from "@/models/User";
 import { env } from "@/lib/env";
 import { isPasswordStrong } from "@/lib/password";
+import { logger } from "@/lib/logger";
 
 const providers = [
     CredentialsProvider({
@@ -87,7 +88,7 @@ export const authOptions = {
 
                 return true;
             } catch (error) {
-                console.error("Google sign-in error:", error);
+                logger.error(error, { event: "google sign-in" });
                 return false;
             }
         },

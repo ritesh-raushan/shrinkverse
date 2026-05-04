@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import toast from "react-hot-toast";
 import { Copy, Info, History } from "lucide-react";
 import Link from "next/link";
 import ParticleAnimation from "@/components/ParticleCanvas";
+import TurnstileWidget from "@/components/TurnstileWidget";
+
+const TURNSTILE_ENABLED = Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY);
 
 export default function ShortenPage() {
     const [longUrl, setLongUrl] = useState("");
@@ -15,9 +18,11 @@ export default function ShortenPage() {
     const [expiresAt, setExpiresAt] = useState(null);
     const [origin, setOrigin] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [turnstileToken, setTurnstileToken] = useState("");
     const router = useRouter();
     const { status } = useSession();
     const isLoggedIn = status === "authenticated";
+    const handleToken = useCallback((token) => setTurnstileToken(token), []);
 
     useEffect(() => {
         setOrigin(
@@ -29,13 +34,19 @@ export default function ShortenPage() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (isSubmitting) return;
+
+        if (!isLoggedIn && TURNSTILE_ENABLED && !turnstileToken) {
+            toast.error("Please complete the CAPTCHA to continue");
+            return;
+        }
+
         setIsSubmitting(true);
 
         try {
             const res = await fetch("/api/url", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ longUrl, alias }),
+                body: JSON.stringify({ longUrl, alias, turnstileToken }),
             });
 
             const data = await res.json();
@@ -132,6 +143,10 @@ export default function ShortenPage() {
                                 />
                             </div>
                         </div>
+
+                        {!isLoggedIn && TURNSTILE_ENABLED && (
+                            <TurnstileWidget onToken={handleToken} />
+                        )}
 
                         <button
                             type="submit"

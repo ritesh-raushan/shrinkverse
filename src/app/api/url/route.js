@@ -6,6 +6,10 @@ import { authOptions } from "@/lib/authOptions";
 import { validateLongUrl, checkSafeBrowsing } from "@/lib/urlSafety";
 import { generateUniqueAlias, isReservedAlias, isValidAliasFormat } from "@/lib/alias";
 import { env } from "@/lib/env";
+import { checkRateLimit } from "@/lib/rateLimit";
+import { getClientIp, hashIp } from "@/lib/ip";
+import { verifyTurnstile } from "@/lib/turnstile";
+import { logger } from "@/lib/logger";
 
 const GUEST_TTL_MS = 15 * 24 * 60 * 60 * 1000;
 
@@ -17,11 +21,40 @@ function getSelfHost() {
     }
 }
 
+function rateLimitResponse(retryAfterSeconds) {
+    return NextResponse.json(
+        { error: "Too many requests. Please slow down and try again." },
+        {
+            status: 429,
+            headers: { "Retry-After": String(retryAfterSeconds) },
+        }
+    );
+}
+
 export async function POST(req) {
     try {
         const body = await req.json().catch(() => null);
         const longUrl = typeof body?.longUrl === "string" ? body.longUrl.trim() : "";
         const customAlias = typeof body?.alias === "string" ? body.alias.trim() : "";
+        const turnstileToken = typeof body?.turnstileToken === "string" ? body.turnstileToken : "";
+
+        const session = await getServerSession(authOptions);
+        const userId = session?.user?.id ?? null;
+
+        // Rate limit. Authed users get a generous bucket keyed by user id;
+        // guests get a stricter bucket keyed by hashed IP.
+        const limiterName = userId ? "shortenAuthed" : "shortenGuest";
+        const limiterKey = userId ? `user:${userId}` : `ip:${hashIp(getClientIp(req))}`;
+        const rl = await checkRateLimit(limiterName, limiterKey);
+        if (!rl.success) return rateLimitResponse(rl.retryAfterSeconds);
+
+        // Guests must solve the CAPTCHA. Authed users skip it.
+        if (!userId) {
+            const captcha = await verifyTurnstile(turnstileToken, req);
+            if (!captcha.ok) {
+                return NextResponse.json({ error: captcha.reason }, { status: 400 });
+            }
+        }
 
         const validation = validateLongUrl(longUrl, { selfHost: getSelfHost() });
         if (!validation.ok) {
@@ -62,8 +95,6 @@ export async function POST(req) {
             }
         }
 
-        const session = await getServerSession(authOptions);
-        const userId = session?.user?.id ?? null;
         const expiresAt = userId ? null : new Date(Date.now() + GUEST_TTL_MS);
 
         const alias =
@@ -87,7 +118,7 @@ export async function POST(req) {
             expiresAt: url.expiresAt,
         });
     } catch (error) {
-        console.error("create url error", error);
+        logger.error(error, { route: "POST /api/url" });
         const message = error?.message?.includes("alias") ? error.message : "Failed to shorten URL";
         return NextResponse.json({ error: message }, { status: 500 });
     }
@@ -105,7 +136,7 @@ export async function GET() {
 
         return NextResponse.json({ urls });
     } catch (error) {
-        console.error("list urls error", error);
+        logger.error(error, { route: "GET /api/url" });
         return NextResponse.json({ error: "Failed to load links" }, { status: 500 });
     }
 }

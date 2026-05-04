@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import dbConnect from "@/lib/dbConnect";
 import Url from "@/models/Url";
 import { authOptions } from "@/lib/authOptions";
+import { logger } from "@/lib/logger";
 
 export async function GET(_request, { params }) {
     try {
@@ -20,7 +21,7 @@ export async function GET(_request, { params }) {
 
         return NextResponse.json({ longUrl: url.longUrl });
     } catch (error) {
-        console.error("fetch alias error", error);
+        logger.error(error, { route: "GET /api/url/[alias]" });
         return NextResponse.json({ error: "Failed to fetch URL" }, { status: 500 });
     }
 }
@@ -44,7 +45,7 @@ export async function DELETE(_request, { params }) {
         await url.deleteOne();
         return NextResponse.json({ message: "URL deleted successfully" });
     } catch (error) {
-        console.error("delete url error", error);
+        logger.error(error, { route: "DELETE /api/url/[alias]" });
         return NextResponse.json({ error: "Failed to delete URL" }, { status: 500 });
     }
 }
