@@ -1,61 +1,69 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import ParticleAnimation from '@/components/ParticleCanvas';
-import toast from 'react-hot-toast';
-import { useAuth } from '@/context/AuthContext';
-import { signIn } from 'next-auth/react';
-import { FcGoogle } from 'react-icons/fc';
-import { useSession } from 'next-auth/react';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { signIn, useSession } from "next-auth/react";
+import toast from "react-hot-toast";
+import ParticleAnimation from "@/components/ParticleCanvas";
+import GoogleLogo from "@/components/GoogleLogo";
 
 export default function LoginPage() {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-    const [emailError, setEmailError] = useState('');
-    const [passwordError, setPasswordError] = useState('');
+    const [emailError, setEmailError] = useState("");
+    const [passwordError, setPasswordError] = useState("");
     const router = useRouter();
-    const { login, isLoggedIn } = useAuth();
-    const { data: session } = useSession();
+    const { status } = useSession();
 
     useEffect(() => {
-        if (session?.user) {
-            login(null, session.user.email);
-            router.push('/shorten');
+        if (status === "authenticated") {
+            router.replace("/shorten");
         }
-    }, [session, router, login]);
+    }, [status, router]);
+
+    const validateForm = () => {
+        let valid = true;
+
+        if (!email || !/\S+@\S+\.\S+/.test(email)) {
+            setEmailError("Please enter a valid email.");
+            valid = false;
+        } else {
+            setEmailError("");
+        }
+
+        if (!password) {
+            setPasswordError("Password is required.");
+            valid = false;
+        } else {
+            setPasswordError("");
+        }
+
+        return valid;
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (!validateForm()) return;
+
         setIsLoading(true);
-
-        // Validate form
-        if (!validateForm()) {
-            setIsLoading(false);
-            return;
-        }
-
         try {
-            const res = await fetch('/api/auth/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password }),
+            const res = await signIn("credentials", {
+                email: email.trim().toLowerCase(),
+                password,
+                redirect: false,
             });
 
-            const data = await res.json();
-
-            if (!res.ok) {
-                throw new Error(data.error || 'Login failed');
+            if (!res || res.error) {
+                throw new Error(res?.error || "Login failed");
             }
 
-            login(data.token, data.user.email);
-            toast.success('Login successful!');
-            router.push('/shorten');
+            toast.success("Login successful!");
+            router.push("/shorten");
         } catch (error) {
-            toast.error(error.message);
+            toast.error(error.message || "Login failed");
         } finally {
             setIsLoading(false);
         }
@@ -64,47 +72,15 @@ export default function LoginPage() {
     const handleGoogleSignIn = async () => {
         setIsGoogleLoading(true);
         try {
-            const result = await signIn('google', {
-                callbackUrl: '/shorten',
-                redirect: true
-            });
-
-            if (result?.error) {
-                throw new Error(result.error);
-            }
+            await signIn("google", { callbackUrl: "/shorten" });
         } catch (error) {
-            toast.error('Failed to sign in with Google');
-            console.error('Google sign-in error:', error);
-        } finally {
+            toast.error("Failed to sign in with Google");
+            console.error("Google sign-in error:", error);
             setIsGoogleLoading(false);
         }
     };
 
-    if (isLoggedIn) {
-        return null;
-    }
-
-    const validateForm = () => {
-        let valid = true;
-
-        // Email validation
-        if (!email || !/\S+@\S+\.\S+/.test(email)) {
-            setEmailError('Please enter a valid email.');
-            valid = false;
-        } else {
-            setEmailError('');
-        }
-
-        // Password validation
-        if (!password || password.length < 6) {
-            setPasswordError('Password must be at least 6 characters.');
-            valid = false;
-        } else {
-            setPasswordError('');
-        }
-
-        return valid;
-    };
+    if (status === "authenticated") return null;
 
     return (
         <main className="min-h-screen flex items-center justify-center relative overflow-hidden">
@@ -112,17 +88,18 @@ export default function LoginPage() {
 
             <div className="relative z-10 w-full max-w-md mx-auto p-8">
                 <div className="bg-black/40 backdrop-blur-lg rounded-2xl p-8 shadow-[0_0_50px_-12px_rgba(0,255,255,0.25)] border border-cyan-500/30 animate-pulse-slow">
-                    <h1 className="text-2xl font-bold text-white mb-8 text-center">Login to ShrinkVerse</h1>
+                    <h1 className="text-2xl font-bold text-white mb-8 text-center">
+                        Login to ShrinkVerse
+                    </h1>
 
-                    <form onSubmit={handleSubmit} className="space-y-6">
+                    <form onSubmit={handleSubmit} className="space-y-6" noValidate>
                         <div className="space-y-2">
-                            <label className="block text-white/80 text-sm font-medium">
-                                Email
-                            </label>
+                            <label className="block text-white/80 text-sm font-medium">Email</label>
                             <input
                                 type="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
+                                autoComplete="email"
                                 required
                                 className="w-full px-4 py-3 rounded-lg bg-white/5 border border-cyan-500/20 text-white placeholder-white/50 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all"
                             />
@@ -137,10 +114,13 @@ export default function LoginPage() {
                                 type="password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
+                                autoComplete="current-password"
                                 required
                                 className="w-full px-4 py-3 rounded-lg bg-white/5 border border-cyan-500/20 text-white placeholder-white/50 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all"
                             />
-                            {passwordError && <p className="text-red-500 text-sm">{passwordError}</p>}
+                            {passwordError && (
+                                <p className="text-red-500 text-sm">{passwordError}</p>
+                            )}
                         </div>
 
                         <button
@@ -148,7 +128,7 @@ export default function LoginPage() {
                             disabled={isLoading}
                             className="w-full py-3 px-6 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white font-semibold rounded-lg shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            {isLoading ? 'Logging in...' : 'Login'}
+                            {isLoading ? "Logging in..." : "Login"}
                         </button>
                     </form>
 
@@ -164,20 +144,20 @@ export default function LoginPage() {
                     <button
                         onClick={handleGoogleSignIn}
                         disabled={isGoogleLoading}
-                        className="mt-6 w-full flex items-center justify-center gap-3 py-3 px-6 bg-white text-gray-800 rounded-lg hover:bg-gray-50 transition-all duration-200"
+                        className="mt-6 w-full flex items-center justify-center gap-3 py-3 px-6 bg-white text-gray-800 rounded-lg hover:bg-gray-50 transition-all duration-200 disabled:opacity-50"
                     >
                         {isGoogleLoading ? (
                             <span>Signing in...</span>
                         ) : (
                             <>
-                                <FcGoogle className="w-5 h-5" />
+                                <GoogleLogo className="w-5 h-5" />
                                 <span className="font-medium">Sign in with Google</span>
                             </>
                         )}
                     </button>
 
                     <p className="mt-6 text-center text-white/60">
-                        Don't have an account?{' '}
+                        Don&apos;t have an account?{" "}
                         <Link href="/signup" className="text-cyan-400 hover:text-cyan-300">
                             Sign up
                         </Link>

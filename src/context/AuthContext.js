@@ -1,62 +1,43 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
-import toast from 'react-hot-toast';
+import { createContext, useCallback, useContext, useMemo } from "react";
+import { signOut, useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
 
-const AuthContext = createContext();
+/**
+ * Thin context wrapper around NextAuth's useSession so existing components
+ * keep their `isLoggedIn` / `userEmail` / `logout` ergonomics.
+ *
+ * No localStorage tokens. The NextAuth cookie is the single source of truth.
+ */
+
+const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-    const [isLoggedIn, setIsLoggedIn] = useState(false);
-    const [userEmail, setUserEmail] = useState('');
+    const { data: session, status } = useSession();
     const router = useRouter();
-    const { data: session } = useSession();
 
-    useEffect(() => {
-        if (session?.user?.email) {
-            setIsLoggedIn(true);
-            setUserEmail(session.user.email);
-        } else {
-            const token = localStorage.getItem('token');
-            const email = localStorage.getItem('userEmail');
-            if (token && email) {
-                setIsLoggedIn(true);
-                setUserEmail(email);
-            }
+    const isLoggedIn = status === "authenticated";
+    const userEmail = session?.user?.email ?? "";
+
+    const logout = useCallback(async () => {
+        try {
+            await signOut({ redirect: false });
+            toast.success("Logged out successfully!");
+            router.push("/");
+        } catch (error) {
+            console.error("logout error", error);
+            toast.error("Error logging out");
         }
-    }, [session]);
+    }, [router]);
 
-    const login = (token, email) => {
-        localStorage.setItem('token', token);
-        localStorage.setItem('userEmail', email);
-        setIsLoggedIn(true);
-        setUserEmail(email);
-    };
-
-    const logout = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('userEmail');
-        setIsLoggedIn(false);
-        setUserEmail('');
-        router.push('/');
-    };
-
-    // const checkAuth = () => {
-    //     if (isLoggedIn) {
-    //         toast.error('You are already logged in!');
-    //         router.push('/shorten');
-    //         return true;
-    //     }
-    //     return false;
-    // };
-
-    return (
-        // <AuthContext.Provider value={{ isLoggedIn, userEmail, login, logout, checkAuth }}>
-        <AuthContext.Provider value={{ isLoggedIn, userEmail, login, logout }}>
-            {children}
-        </AuthContext.Provider>
+    const value = useMemo(
+        () => ({ isLoggedIn, userEmail, status, logout }),
+        [isLoggedIn, userEmail, status, logout]
     );
+
+    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

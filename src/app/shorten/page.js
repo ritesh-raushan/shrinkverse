@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import toast from "react-hot-toast";
+import { Copy, Info, History } from "lucide-react";
+import Link from "next/link";
 import ParticleAnimation from "@/components/ParticleCanvas";
-import toast from 'react-hot-toast';
-import { Copy, Info, History } from 'lucide-react';
-import Link from 'next/link';
-import { useAuth } from '@/context/AuthContext';
 
 export default function ShortenPage() {
     const [longUrl, setLongUrl] = useState("");
@@ -14,57 +14,61 @@ export default function ShortenPage() {
     const [shortenedUrl, setShortenedUrl] = useState("");
     const [expiresAt, setExpiresAt] = useState(null);
     const [origin, setOrigin] = useState("");
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const router = useRouter();
-    const { isLoggedIn } = useAuth();
+    const { status } = useSession();
+    const isLoggedIn = status === "authenticated";
 
     useEffect(() => {
-        setOrigin(window.location.origin);
+        setOrigin(
+            process.env.NEXT_PUBLIC_BASE_URL ||
+                (typeof window !== "undefined" ? window.location.origin : "")
+        );
     }, []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (isSubmitting) return;
+        setIsSubmitting(true);
 
         try {
-            const token = localStorage.getItem('token');
-            const res = await fetch('/api/url', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token && { 'Authorization': `Bearer ${token}` }),
-                },
+            const res = await fetch("/api/url", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ longUrl, alias }),
             });
 
             const data = await res.json();
 
             if (!res.ok) {
-                throw new Error(data.error || 'Failed to shorten URL');
+                throw new Error(data.error || "Failed to shorten URL");
             }
 
-            const shortUrl = `${origin}/${data.url.alias}`;
-            setShortenedUrl(shortUrl);
+            setShortenedUrl(`${origin}/${data.url.alias}`);
             setExpiresAt(data.url.expiresAt);
-            toast.success('URL shortened successfully!');
+            toast.success("URL shortened successfully!");
         } catch (error) {
             toast.error(error.message);
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
     const copyToClipboard = async () => {
         try {
             await navigator.clipboard.writeText(shortenedUrl);
-            toast.success('Copied to clipboard!');
-        } catch (error) {
-            toast.error('Failed to copy to clipboard');
+            toast.success("Copied to clipboard!");
+        } catch {
+            toast.error("Failed to copy to clipboard");
         }
     };
 
     const handleViewLinks = () => {
         if (!isLoggedIn) {
-            toast.error('Please login to view your links');
+            toast.error("Please login to view your links");
             return;
         }
-        router.push('/links');
+        router.push("/links");
     };
 
     return (
@@ -78,16 +82,18 @@ export default function ShortenPage() {
                         <span className="text-white">Verse</span>
                     </h1>
 
-                    {/* Guest User Notice */}
                     {!isLoggedIn && (
                         <div className="mb-6 p-4 bg-cyan-500/10 rounded-lg border border-cyan-500/20">
                             <div className="flex items-start space-x-2">
                                 <Info className="w-5 h-5 text-cyan-400 mt-0.5 flex-shrink-0" />
                                 <p className="text-sm text-white/80">
-                                    Guest links expire in 15 days.{' '}
-                                    <Link href="/login" className="text-cyan-400 hover:text-cyan-300 underline">
+                                    Guest links expire in 15 days.{" "}
+                                    <Link
+                                        href="/login"
+                                        className="text-cyan-400 hover:text-cyan-300 underline"
+                                    >
                                         Login
-                                    </Link>{' '}
+                                    </Link>{" "}
                                     for permanent links!
                                 </p>
                             </div>
@@ -115,7 +121,7 @@ export default function ShortenPage() {
                             </label>
                             <div className="flex flex-col sm:flex-row items-stretch gap-2">
                                 <div className="bg-white/5 border border-cyan-500/20 rounded-lg px-4 py-3 text-white/80 text-sm truncate">
-                                    {origin ? `${origin}/` : 'loading...'}
+                                    {origin ? `${origin}/` : "loading..."}
                                 </div>
                                 <input
                                     type="text"
@@ -129,16 +135,19 @@ export default function ShortenPage() {
 
                         <button
                             type="submit"
-                            className="w-full inline-flex text-center justify-center px-6 py-3 rounded-full bg-[#00ffee] text-black font-medium hover:bg-opacity-90 transition-all hover:scale-105 transform hover:bg-[#00ffee]"
+                            disabled={isSubmitting}
+                            className="w-full inline-flex text-center justify-center px-6 py-3 rounded-full bg-[#00ffee] text-black font-medium hover:bg-opacity-90 transition-all hover:scale-105 transform disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            Shorten Now
+                            {isSubmitting ? "Shortening..." : "Shorten Now"}
                         </button>
                     </form>
 
                     {shortenedUrl && (
                         <div className="mt-6 p-4 bg-white/5 rounded-lg border border-cyan-500/20">
                             <div className="flex items-center justify-between gap-2">
-                                <p className="text-white/90 truncate text-sm sm:text-base">{shortenedUrl}</p>
+                                <p className="text-white/90 truncate text-sm sm:text-base">
+                                    {shortenedUrl}
+                                </p>
                                 <button
                                     onClick={copyToClipboard}
                                     className="ml-2 p-2 text-cyan-400 hover:text-cyan-300 transition-colors flex-shrink-0"

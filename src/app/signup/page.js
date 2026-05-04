@@ -1,59 +1,84 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import ParticleAnimation from '@/components/ParticleCanvas';
-import toast from 'react-hot-toast';
-import { useAuth } from '@/context/AuthContext';
-import { signIn } from 'next-auth/react';
-import { FcGoogle } from 'react-icons/fc';
-import { useSession } from 'next-auth/react';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { signIn, useSession } from "next-auth/react";
+import toast from "react-hot-toast";
+import ParticleAnimation from "@/components/ParticleCanvas";
+import GoogleLogo from "@/components/GoogleLogo";
+import { isPasswordStrong, PASSWORD_RULE_MESSAGE } from "@/lib/password";
 
 export default function SignupPage() {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
     const [isLoading, setIsLoading] = useState(false);
-    const [emailError, setEmailError] = useState('');
-    const [passwordError, setPasswordError] = useState('');
+    const [emailError, setEmailError] = useState("");
+    const [passwordError, setPasswordError] = useState("");
     const router = useRouter();
-    const { isLoggedIn, login } = useAuth();
-    const { data: session } = useSession();
+    const { status } = useSession();
 
     useEffect(() => {
-        if (isLoggedIn || session?.user) {
-            if (session?.user) {
-                login(null, session.user.email);
-            }
-            router.push('/shorten');
+        if (status === "authenticated") {
+            router.replace("/shorten");
         }
-    }, [isLoggedIn, session, router, login]);
+    }, [status, router]);
+
+    const validateForm = () => {
+        let valid = true;
+
+        if (!email || !/\S+@\S+\.\S+/.test(email)) {
+            setEmailError("Please enter a valid email.");
+            valid = false;
+        } else {
+            setEmailError("");
+        }
+
+        if (!isPasswordStrong(password)) {
+            setPasswordError(PASSWORD_RULE_MESSAGE);
+            valid = false;
+        } else {
+            setPasswordError("");
+        }
+
+        return valid;
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (!validateForm()) return;
+
         setIsLoading(true);
-
-        // Validate form
-        if (!validateForm()) {
-            setIsLoading(false);
-            return;
-        }
-
         try {
-            const res = await fetch('/api/auth/register', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password }),
+            const res = await fetch("/api/auth/register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    email: email.trim().toLowerCase(),
+                    password,
+                }),
             });
 
-            const data = await res.json();
+            const data = await res.json().catch(() => ({}));
 
             if (!res.ok) {
-                throw new Error(data.error || 'Registration failed');
+                throw new Error(data.error || "Registration failed");
             }
 
-            toast.success('Registration successful! Please login.');
-            router.push('/login');
+            toast.success("Account created. Logging you in...");
+
+            const signInRes = await signIn("credentials", {
+                email: email.trim().toLowerCase(),
+                password,
+                redirect: false,
+            });
+
+            if (!signInRes || signInRes.error) {
+                router.push("/login");
+                return;
+            }
+
+            router.push("/shorten");
         } catch (error) {
             toast.error(error.message);
         } finally {
@@ -63,33 +88,13 @@ export default function SignupPage() {
 
     const handleGoogleSignIn = async () => {
         try {
-            await signIn('google', { callbackUrl: '/shorten' });
+            await signIn("google", { callbackUrl: "/shorten" });
         } catch (error) {
-            toast.error(error.message || 'Failed to sign in with Google');
+            toast.error(error.message || "Failed to sign in with Google");
         }
     };
 
-    const validateForm = () => {
-        let valid = true;
-
-        // Email validation
-        if (!email || !/\S+@\S+\.\S+/.test(email)) {
-            setEmailError('Please enter a valid email.');
-            valid = false;
-        } else {
-            setEmailError('');
-        }
-
-        // Password validation
-        if (!password || password.length < 6) {
-            setPasswordError('Password must be at least 6 characters.');
-            valid = false;
-        } else {
-            setPasswordError('');
-        }
-
-        return valid;
-    };
+    if (status === "authenticated") return null;
 
     return (
         <main className="min-h-screen flex items-center justify-center relative overflow-hidden">
@@ -97,17 +102,18 @@ export default function SignupPage() {
 
             <div className="relative z-10 w-full max-w-md mx-auto p-8">
                 <div className="bg-black/40 backdrop-blur-lg rounded-2xl p-8 shadow-[0_0_50px_-12px_rgba(0,255,255,0.25)] border border-cyan-500/30 animate-pulse-slow">
-                    <h1 className="text-2xl font-bold text-white mb-8 text-center">Create Account</h1>
+                    <h1 className="text-2xl font-bold text-white mb-8 text-center">
+                        Create Account
+                    </h1>
 
-                    <form onSubmit={handleSubmit} className="space-y-6">
+                    <form onSubmit={handleSubmit} className="space-y-6" noValidate>
                         <div className="space-y-2">
-                            <label className="block text-white/80 text-sm font-medium">
-                                Email
-                            </label>
+                            <label className="block text-white/80 text-sm font-medium">Email</label>
                             <input
                                 type="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
+                                autoComplete="email"
                                 required
                                 className="w-full px-4 py-3 rounded-lg bg-white/5 border border-cyan-500/20 text-white placeholder-white/50 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all"
                             />
@@ -122,10 +128,14 @@ export default function SignupPage() {
                                 type="password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
+                                autoComplete="new-password"
                                 required
                                 className="w-full px-4 py-3 rounded-lg bg-white/5 border border-cyan-500/20 text-white placeholder-white/50 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all"
                             />
-                            {passwordError && <p className="text-red-500 text-sm">{passwordError}</p>}
+                            <p className="text-white/50 text-xs">{PASSWORD_RULE_MESSAGE}</p>
+                            {passwordError && (
+                                <p className="text-red-500 text-sm">{passwordError}</p>
+                            )}
                         </div>
 
                         <button
@@ -133,7 +143,7 @@ export default function SignupPage() {
                             disabled={isLoading}
                             className="w-full py-3 px-6 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white font-semibold rounded-lg shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            {isLoading ? 'Creating account...' : 'Sign Up'}
+                            {isLoading ? "Creating account..." : "Sign Up"}
                         </button>
                     </form>
 
@@ -150,12 +160,12 @@ export default function SignupPage() {
                         onClick={handleGoogleSignIn}
                         className="mt-6 w-full flex items-center justify-center gap-3 py-3 px-6 bg-white text-gray-800 rounded-lg hover:bg-gray-50 transition-all duration-200"
                     >
-                        <FcGoogle className="w-5 h-5" />
+                        <GoogleLogo className="w-5 h-5" />
                         <span className="font-medium">Sign up with Google</span>
                     </button>
 
                     <p className="mt-6 text-center text-white/60">
-                        Already have an account?{' '}
+                        Already have an account?{" "}
                         <Link href="/login" className="text-cyan-400 hover:text-cyan-300">
                             Login
                         </Link>
