@@ -1,90 +1,66 @@
-import dbConnect from '@/lib/dbConnect';
-import Url from '@/models/Url';
-import { verifyAuth } from '@/lib/auth';
-import { NextResponse } from 'next/server';
+import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "../auth/[...nextauth]/route";
+import dbConnect from "@/lib/dbConnect";
+import Url from "@/models/Url";
+import { authOptions } from "@/lib/authOptions";
 
-async function removeExpiredUrls() {
-    const now = new Date();
-    await Url.deleteMany({ expiresAt: { $lt: now } });
-}
+const GUEST_TTL_MS = 15 * 24 * 60 * 60 * 1000;
 
 export async function POST(req) {
     try {
-        const { longUrl, alias } = await req.json();
-        const token = req.headers.get('authorization')?.split(' ')[1];
+        const body = await req.json().catch(() => null);
+        const longUrl = typeof body?.longUrl === "string" ? body.longUrl.trim() : "";
+        const alias = typeof body?.alias === "string" ? body.alias.trim() : "";
+
+        if (!longUrl) {
+            return NextResponse.json({ error: "longUrl is required" }, { status: 400 });
+        }
 
         await dbConnect();
-        await removeExpiredUrls();
 
         if (alias) {
-            const existingUrl = await Url.findOne({ alias });
-            if (existingUrl) {
-                return NextResponse.json(
-                    { error: 'Alias already taken' },
-                    { status: 400 }
-                );
+            const existing = await Url.findOne({ alias }).lean();
+            if (existing) {
+                return NextResponse.json({ error: "Alias already taken" }, { status: 409 });
             }
         }
 
-        let userId = null;
-        let expiresAt = null;
-
-        // Check if user is authenticated
         const session = await getServerSession(authOptions);
-        if (session?.user?.id) {
-            userId = session.user.id;
-        } else if (token) {
-            // If no NextAuth session, try JWT token
-            try {
-                userId = await verifyAuth(token);
-            } catch (error) {
-                // Token invalid, treat as guest user
-                expiresAt = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000); // 15 days from now
-            }
-        } else {
-            // Guest user
-            expiresAt = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000); // 15 days from now
-        }
+        const userId = session?.user?.id ?? null;
+        const expiresAt = userId ? null : new Date(Date.now() + GUEST_TTL_MS);
 
         const url = await Url.create({
             longUrl,
             alias: alias || Math.random().toString(36).substring(2, 8),
             userId,
             expiresAt,
-            createdAt: new Date()
+            createdAt: new Date(),
         });
 
         return NextResponse.json({
             url,
             isGuest: !userId,
-            expiresAt: url.expiresAt
+            expiresAt: url.expiresAt,
         });
     } catch (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error("create url error", error);
+        return NextResponse.json({ error: "Failed to shorten URL" }, { status: 500 });
     }
 }
 
-export async function GET(req) {
+export async function GET() {
     try {
-        const token = req.headers.get('authorization')?.split(' ')[1];
         const session = await getServerSession(authOptions);
-
-        let userId = null;
-        if (session?.user?.id) {
-            userId = session.user.id;
-        } else if (token) {
-            userId = await verifyAuth(token);
-        } else {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
         await dbConnect();
+        const urls = await Url.find({ userId: session.user.id }).sort({ createdAt: -1 }).lean();
 
-        const urls = await Url.find({ userId });
         return NextResponse.json({ urls });
     } catch (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error("list urls error", error);
+        return NextResponse.json({ error: "Failed to load links" }, { status: 500 });
     }
 }
