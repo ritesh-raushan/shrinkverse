@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const UrlSchema = new mongoose.Schema({
     longUrl: {
@@ -12,16 +12,17 @@ const UrlSchema = new mongoose.Schema({
     },
     userId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
+        ref: "User",
         required: false, // Made optional for guest users
     },
     expiresAt: {
         type: Date,
         required: false,
-        default: function() {
-            // Set expiration to 15 days from creation for guest users
-            return this.userId ? null : new Date(Date.now() + 15 * 24 * 60 * 60 * 1000);
-        }
+        default: null,
+    },
+    clicks: {
+        type: Number,
+        default: 0,
     },
     createdAt: {
         type: Date,
@@ -29,5 +30,12 @@ const UrlSchema = new mongoose.Schema({
     },
 });
 
-const UrlModel = (mongoose.models.Url) || mongoose.model('Url', UrlSchema); 
+// MongoDB auto-delete documents whose `expiresAt` has passed.
+// `expireAfterSeconds: 0` means: remove as soon as `expiresAt < now`.
+UrlSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+
+// Fast lookup of a user's links sorted by recency (used by /links page).
+UrlSchema.index({ userId: 1, createdAt: -1 });
+
+const UrlModel = mongoose.models.Url || mongoose.model("Url", UrlSchema);
 export default UrlModel;
