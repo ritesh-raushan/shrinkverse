@@ -2,10 +2,11 @@ import Link from "next/link";
 
 export const metadata = {
     title: "Link not found",
+    description: "This short link doesn't exist or has expired.",
     robots: { index: false, follow: false },
 };
 
-export default function AliasNotFound() {
+export default function LinkNotFoundPage() {
     return (
         <main className="min-h-screen flex items-center justify-center px-4">
             <div className="text-center max-w-md">

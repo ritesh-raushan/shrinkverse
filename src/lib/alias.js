@@ -31,6 +31,7 @@ const RESERVED_ALIASES = new Set([
     "help",
     "docs",
     "blog",
+    "link-not-found",
 ]);
 
 const ALIAS_REGEX = /^[A-Za-z0-9_-]{3,32}$/;
